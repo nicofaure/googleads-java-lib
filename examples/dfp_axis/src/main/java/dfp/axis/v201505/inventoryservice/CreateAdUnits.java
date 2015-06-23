@@ -14,6 +14,13 @@
 
 package dfp.axis.v201505.inventoryservice;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.commons.lang.StringUtils;
+
 import com.google.api.ads.common.lib.auth.OfflineCredentials;
 import com.google.api.ads.common.lib.auth.OfflineCredentials.Api;
 import com.google.api.ads.dfp.axis.factory.DfpServices;
@@ -27,8 +34,6 @@ import com.google.api.ads.dfp.axis.v201505.Size;
 import com.google.api.ads.dfp.axis.v201505.TargetPlatform;
 import com.google.api.ads.dfp.lib.client.DfpSession;
 import com.google.api.client.auth.oauth2.Credential;
-
-import java.util.Random;
 
 /**
  * This example creates new ad units. To determine which ad units exist, run
@@ -56,52 +61,51 @@ public class CreateAdUnits {
     // Set the parent ad unit's ID for all ad units to be created under.
     String parentAdUnitId = networkService.getCurrentNetwork().getEffectiveRootAdUnitId();
 
-    // Create a 300x250 web ad unit size.
-    Size webSize = new Size();
-    webSize.setWidth(300);
-    webSize.setHeight(250);
-    webSize.setIsAspectRatio(false);
-
-    AdUnitSize webAdUnitSize = new AdUnitSize();
-    webAdUnitSize.setSize(webSize);
-    webAdUnitSize.setEnvironmentType(EnvironmentType.BROWSER);
-
-    // Create a 640x360v video ad unit size with a companion.
-    Size videoSize = new Size();
-    videoSize.setWidth(640);
-    videoSize.setHeight(360);
-    videoSize.setIsAspectRatio(false);
-
-    AdUnitSize videoAdUnitSize = new AdUnitSize();
-    videoAdUnitSize.setSize(videoSize);
-    videoAdUnitSize.setCompanions(new AdUnitSize[] {webAdUnitSize});
-    videoAdUnitSize.setEnvironmentType(EnvironmentType.VIDEO_PLAYER);
-
-    // Create a web ad unit.
-    AdUnit webAdUnit = new AdUnit();
-    webAdUnit.setName("web_ad_unit_" + new Random().nextInt(Integer.MAX_VALUE));
-    webAdUnit.setDescription(webAdUnit.getName());
-    webAdUnit.setTargetPlatform(TargetPlatform.WEB);
-    webAdUnit.setParentId(parentAdUnitId);
-    webAdUnit.setTargetWindow(AdUnitTargetWindow.BLANK);
-    webAdUnit.setAdUnitSizes(new AdUnitSize[]{webAdUnitSize});
-
-    // Create a video ad unit.
-    AdUnit videoAdUnit = new AdUnit();
-    videoAdUnit.setName("video_ad_unit_" + new Random().nextInt(Integer.MAX_VALUE));
-    videoAdUnit.setDescription(videoAdUnit.getName());
-    videoAdUnit.setTargetPlatform(TargetPlatform.WEB);
-    videoAdUnit.setParentId(parentAdUnitId);
-    videoAdUnit.setTargetWindow(AdUnitTargetWindow.BLANK);
-    videoAdUnit.setAdUnitSizes(new AdUnitSize[]{videoAdUnitSize});
-
-    // Create the ad units on the server.
-    AdUnit[] adUnits = inventoryService.createAdUnits(new AdUnit[] {webAdUnit, videoAdUnit});
-
-    for (AdUnit adUnit : adUnits) {
-      System.out.printf("An ad unit with ID \"%s\", name \"%s\" was created.\n", adUnit.getId(),
-          adUnit.getName());
+    BufferedReader csv = new BufferedReader(new FileReader("/Users/goliva/google_dfp/exampleMLA.csv"));
+    String line;
+    List<AdUnit> adUnits = new ArrayList<AdUnit>();
+    while ((line=csv.readLine()) != null) {
+//    	try{
+    		String[] splitLine = line.split(",");
+    		Size webSize = new Size();
+    		webSize.setWidth(new Integer(splitLine[4]));
+    		webSize.setHeight(new Integer(splitLine[5]));
+    		webSize.setIsAspectRatio(false);
+    		
+    		AdUnitSize webAdUnitSize = new AdUnitSize();
+    		webAdUnitSize.setSize(webSize);
+    		webAdUnitSize.setEnvironmentType(EnvironmentType.BROWSER);
+    		
+    		
+    		AdUnit webAdUnit = new AdUnit();
+    		webAdUnit.setName(splitLine[2]);
+    		webAdUnit.setAdUnitCode(splitLine[1]);
+    		if (StringUtils.isEmpty(splitLine[3])){
+    			webAdUnit.setParentId(parentAdUnitId);        	
+    		}else{
+    			webAdUnit.setParentId(splitLine[3]);
+    		}
+    		
+    		webAdUnit.setTargetPlatform(TargetPlatform.WEB);
+    		webAdUnit.setTargetWindow(AdUnitTargetWindow.BLANK);
+    		webAdUnit.setAdUnitSizes(new AdUnitSize[]{webAdUnitSize});
+    		adUnits.add(webAdUnit);
+    		
+//    		
+//    	}catch(Exception e){
+//    		System.out.printf("Error in line: "+line+":"+e.getMessage()+" "+e.getCause()+" "+e.getStackTrace()+"\n");
+//    	}
     }
+    csv.close();
+    
+    AdUnit[] adUnitsAsList = (AdUnit[]) adUnits.toArray(new AdUnit[adUnits.size()]);
+    
+    AdUnit[] adUnitsLog = inventoryService.createAdUnits(adUnitsAsList);
+	
+	for (AdUnit adUnit : adUnitsLog) {
+		System.out.printf("An ad unit with ID \"%s\", name \"%s\" was created.\n", adUnit.getId(),
+				adUnit.getName());
+	}
   }
 
   public static void main(String[] args) throws Exception {
@@ -111,8 +115,6 @@ public class CreateAdUnits {
         .fromFile()
         .build()
         .generateCredential();
-
-    // Construct a DfpSession.
     DfpSession session = new DfpSession.Builder()
         .fromFile()
         .withOAuth2Credential(oAuth2Credential)
