@@ -17,14 +17,12 @@ package dfp.axis.v201505.inventoryservice;
 import static java.lang.String.format;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
-import java.rmi.RemoteException;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.commons.lang.StringUtils;
 
 import com.google.api.ads.common.lib.auth.OfflineCredentials;
 import com.google.api.ads.common.lib.auth.OfflineCredentials.Api;
@@ -32,7 +30,6 @@ import com.google.api.ads.dfp.axis.factory.DfpServices;
 import com.google.api.ads.dfp.axis.v201505.AdUnit;
 import com.google.api.ads.dfp.axis.v201505.AdUnitSize;
 import com.google.api.ads.dfp.axis.v201505.AdUnitTargetWindow;
-import com.google.api.ads.dfp.axis.v201505.ApiException;
 import com.google.api.ads.dfp.axis.v201505.EnvironmentType;
 import com.google.api.ads.dfp.axis.v201505.InventoryServiceInterface;
 import com.google.api.ads.dfp.axis.v201505.NetworkServiceInterface;
@@ -59,12 +56,14 @@ public class CreateAdUnits {
 
 		// Set the parent ad unit's ID for all ad units to be created under.
 
-		BufferedReader csv = new BufferedReader(new FileReader("/Users/nfaure/dfp_google/exampleMLA.csv"));
+		BufferedReader csv = new BufferedReader(new InputStreamReader(new FileInputStream("/Users/nfaure/dfp_google/exampleMLA.csv"), "UTF8"));
 		String line;
 		Map<String, List<AdUnit>> adUnitsMap = new HashMap<String, List<AdUnit>>();
 		System.out.println("Loading CSV file");
+		int counter = 0;
 		while ((line = csv.readLine()) != null) {
 			String[] splitLine = line.split(",");
+			System.out.println(line);
 			Size webSize = new Size();
 			webSize.setWidth(new Integer(splitLine[4]));
 			webSize.setHeight(new Integer(splitLine[5]));
@@ -88,11 +87,15 @@ public class CreateAdUnits {
 				adUnitsMap.put(splitLine[0], adUnits);
 			}
 			adUnits.add(webAdUnit);
+			counter++;
 		}
 		csv.close();
+		System.out.println(format("%s was readed from csv", counter));
 
 		Map<String, AdUnit> createdAdUnitMap = new HashMap<String, AdUnit>();
+		System.out.println("Creating L1 elements");
 		createL1AdUnit(createdAdUnitMap, adUnitsMap, inventoryService, networkService);
+		System.out.println("Creating L-n elements");
 		createLnAdUnit(createdAdUnitMap, adUnitsMap, inventoryService, networkService);
 
 	}
@@ -116,6 +119,7 @@ public class CreateAdUnits {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 
 	}
@@ -131,6 +135,7 @@ public class CreateAdUnits {
 			createdAdUnits = inventoryService.createAdUnits(adUnitsMap.get("1").toArray(new AdUnit[] {}));
 		} catch (Exception e) {
 			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 		for (AdUnit adUnit : createdAdUnits) {
 			createdAdUnitMap.put(adUnit.getAdUnitCode(), adUnit);
