@@ -47,40 +47,23 @@ import com.google.api.client.auth.oauth2.Credential;
  */
 public class CreateAdUnits {
 
-	public static void runExample(DfpServices dfpServices, DfpSession session) throws Exception {
-		// Get the InventoryService.
+	public static void runExample(DfpServices dfpServices, DfpSession session, String filePath) throws Exception {
 		InventoryServiceInterface inventoryService = dfpServices.get(session, InventoryServiceInterface.class);
-
-		// Get the NetworkService.
 		NetworkServiceInterface networkService = dfpServices.get(session, NetworkServiceInterface.class);
-
-		// Set the parent ad unit's ID for all ad units to be created under.
-
-		BufferedReader csv = new BufferedReader(new InputStreamReader(new FileInputStream("/Users/nfaure/dfp_google/exampleMLA.csv"), "UTF8"));
+		BufferedReader csv = new BufferedReader(new InputStreamReader(new FileInputStream(filePath), "UTF8"));
 		String line;
 		Map<String, List<AdUnit>> adUnitsMap = new HashMap<String, List<AdUnit>>();
 		System.out.println("Loading CSV file");
 		int counter = 0;
 		while ((line = csv.readLine()) != null) {
-			String[] splitLine = line.split(",");
-			System.out.println(line);
-			Size webSize = new Size();
-			webSize.setWidth(new Integer(splitLine[4]));
-			webSize.setHeight(new Integer(splitLine[5]));
-			webSize.setIsAspectRatio(false);
-
-			AdUnitSize webAdUnitSize = new AdUnitSize();
-			webAdUnitSize.setSize(webSize);
-			webAdUnitSize.setEnvironmentType(EnvironmentType.BROWSER);
-
+			String[] splitLine = line.split("\t");
 			AdUnit webAdUnit = new AdUnit();
 			webAdUnit.setName(splitLine[2]);
 			webAdUnit.setAdUnitCode(splitLine[1]);
 			webAdUnit.setTargetPlatform(TargetPlatform.WEB);
 			webAdUnit.setTargetWindow(AdUnitTargetWindow.BLANK);
-			webAdUnit.setAdUnitSizes(new AdUnitSize[] { webAdUnitSize });
+			webAdUnit.setAdUnitSizes(fillAdUnitsSizeFromLine(splitLine[4]));
 			webAdUnit.setParentId(splitLine[3]);
-
 			List<AdUnit> adUnits = adUnitsMap.get(splitLine[0]);
 			if (adUnits == null) {
 				adUnits = new ArrayList<AdUnit>();
@@ -97,6 +80,31 @@ public class CreateAdUnits {
 		createL1AdUnit(createdAdUnitMap, adUnitsMap, inventoryService, networkService);
 		System.out.println("Creating L-n elements");
 		createLnAdUnit(createdAdUnitMap, adUnitsMap, inventoryService, networkService);
+		System.out.println("AdsUnits was created");
+	}
+
+	private static AdUnitSize[] fillAdUnitsSizeFromLine(String sizes) {
+
+		AdUnitSize[] adUnitSizes;
+		if (!"".equals(sizes)) {
+			String[] sizeAsCollection = sizes.split(";");
+			adUnitSizes = new AdUnitSize[sizeAsCollection.length];
+			for (int i = 0; i < sizeAsCollection.length; i++) {
+				System.out.println(format("Adding new size: %s", sizeAsCollection[i]));
+				String[] widthAndHeight = sizeAsCollection[i].split("x");
+				Size webSize = new Size();
+				webSize.setWidth(new Integer(widthAndHeight[0]));
+				webSize.setHeight(new Integer(widthAndHeight[1]));
+				webSize.setIsAspectRatio(false);
+				AdUnitSize webAdUnitSize = new AdUnitSize();
+				webAdUnitSize.setSize(webSize);
+				webAdUnitSize.setEnvironmentType(EnvironmentType.BROWSER);
+				adUnitSizes[i] = webAdUnitSize;
+			}
+		} else {
+			adUnitSizes = new AdUnitSize[] {};
+		}
+		return adUnitSizes;
 
 	}
 
@@ -144,12 +152,9 @@ public class CreateAdUnits {
 	}
 
 	public static void main(String[] args) throws Exception {
-		// Generate a refreshable OAuth2 credential.
 		Credential oAuth2Credential = new OfflineCredentials.Builder().forApi(Api.DFP).fromFile().build().generateCredential();
 		DfpSession session = new DfpSession.Builder().fromFile().withOAuth2Credential(oAuth2Credential).build();
-
 		DfpServices dfpServices = new DfpServices();
-
-		runExample(dfpServices, session);
+		runExample(dfpServices, session, args[0]);
 	}
 }
