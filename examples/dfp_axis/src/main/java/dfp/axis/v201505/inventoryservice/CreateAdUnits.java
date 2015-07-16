@@ -58,16 +58,16 @@ public class CreateAdUnits {
 		while ((line = csv.readLine()) != null) {
 			String[] splitLine = line.split("\t");
 			AdUnit webAdUnit = new AdUnit();
-			webAdUnit.setName(splitLine[2]);
-			webAdUnit.setAdUnitCode(splitLine[1]);
+			webAdUnit.setName(splitLine[2].trim());
+			webAdUnit.setAdUnitCode(splitLine[1].trim());
 			webAdUnit.setTargetPlatform(TargetPlatform.WEB);
 			webAdUnit.setTargetWindow(AdUnitTargetWindow.BLANK);
-			webAdUnit.setAdUnitSizes(fillAdUnitsSizeFromLine(splitLine[4]));
-			webAdUnit.setParentId(splitLine[3]);
-			List<AdUnit> adUnits = adUnitsMap.get(splitLine[0]);
+			webAdUnit.setAdUnitSizes(fillAdUnitsSizeFromLine(splitLine[4].trim()));
+			webAdUnit.setParentId(splitLine[3].trim());
+			List<AdUnit> adUnits = adUnitsMap.get(splitLine[0].trim());
 			if (adUnits == null) {
 				adUnits = new ArrayList<AdUnit>();
-				adUnitsMap.put(splitLine[0], adUnits);
+				adUnitsMap.put(splitLine[0].trim(), adUnits);
 			}
 			adUnits.add(webAdUnit);
 			counter++;
@@ -86,6 +86,7 @@ public class CreateAdUnits {
 	private static AdUnitSize[] fillAdUnitsSizeFromLine(String sizes) {
 
 		AdUnitSize[] adUnitSizes;
+		System.out.println("Size" + sizes + ";");
 		if (!"".equals(sizes)) {
 			String[] sizeAsCollection = sizes.split(";");
 			adUnitSizes = new AdUnitSize[sizeAsCollection.length];
