@@ -11,23 +11,18 @@ NOTAS PARA GONZA:
 ================
 Generalmente, hay tres factores que hacen romper la creación de AdUnits.
 
-1) Conectividad: Emi utiliza proxy, eso generó quilombos.
+* Conectividad: Emi utiliza proxy, eso generó quilombos.
 
-2) Encoding: el archivo debe tener UTF-8 without BOM. Windows, lo guarda por default en UTF-8 with BOM. Eso hace romper generalmente esta linea de código (https://github.com/nicofaure/googleads-java-lib/blob/change-adunit-generation/examples/dfp_axis/src/main/java/dfp/axis/v201505/inventoryservice/CreateAdUnits.java#L142)
+* Encoding: el archivo debe tener UTF-8 without BOM. Windows, lo guarda por default en UTF-8 with BOM. Eso hace romper generalmente esta linea de código (https://github.com/nicofaure/googleads-java-lib/blob/change-adunit-generation/examples/dfp_axis/src/main/java/dfp/axis/v201505/inventoryservice/CreateAdUnits.java#L142)
 
-3) Mal formato del archivo. Generalmente, la primer línea. Tener en cuenta que es un archivo separado por tabs. Las columnas son:
+* Mal formato del archivo. Generalmente, la primer línea. Tener en cuenta que es un archivo separado por tabs. Las columnas son:
 
-[0]: Category Level
-
-[1]: Category / Path (en MyML)
-
-[2]: AdUnitName
-
-[3]: ParentCategory. En el caso de la primer linea, debe ser igual que la categoria.
-
-[4]: Sizes. En el caso de tener mas de un size, debe estar delimitado por ';'
-
-[5]: Un campo adicional, porque excel exporta mal los datos.
+	* [0]: Category Level
+	* [1]: Category / Path (en MyML) 
+	* [2]: AdUnitName
+	* [3]: ParentCategory. En el caso de la primer linea, debe ser igual que la categoria. 
+	* [4]: Sizes. En el caso de tener mas de un size, debe estar delimitado por ';' 
+	* [5]: Un campo adicional, porque excel exporta mal los datos.
 
 
 EJEMPLO 1:
