@@ -10,9 +10,13 @@ For any issues relating to the API (not the library), please see the [DFP API fo
 NOTAS PARA GONZA:
 ================
 Generalmente, hay tres factores que hacen romper la creación de AdUnits.
+
 1) Conectividad: Emi utiliza proxy, eso generó quilombos.
+
 2) Encoding: el archivo debe tener UTF-8 without BOM. Windows, lo guarda por default en UTF-8 with BOM. Eso hace romper generalmente esta linea de código (https://github.com/nicofaure/googleads-java-lib/blob/change-adunit-generation/examples/dfp_axis/src/main/java/dfp/axis/v201505/inventoryservice/CreateAdUnits.java#L142)
+
 3) Mal formato del archivo. Generalmente, la primer línea. Tener en cuenta que es un archivo separado por tabs. Las columnas son:
+
 [0]: Category Level
 [1]: Category / Path (en MyML)
 [2]: AdUnitName
