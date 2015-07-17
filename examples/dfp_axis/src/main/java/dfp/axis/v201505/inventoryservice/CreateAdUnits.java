@@ -56,6 +56,7 @@ public class CreateAdUnits {
 		System.out.println("Loading CSV file");
 		int counter = 0;
 		while ((line = csv.readLine()) != null) {
+			System.out.println(format("Processing line %s:%s", counter, line));
 			String[] splitLine = line.split("\t");
 			AdUnit webAdUnit = new AdUnit();
 			webAdUnit.setName(splitLine[2].trim());
@@ -144,7 +145,7 @@ public class CreateAdUnits {
 			createdAdUnits = inventoryService.createAdUnits(adUnitsMap.get("1").toArray(new AdUnit[] {}));
 		} catch (Exception e) {
 			e.printStackTrace();
-			throw new RuntimeException(e);
+			throw new RuntimeException("Emi, verifica el encoding del archivo. Seguramente no esta en UTF without BOM", e);
 		}
 		for (AdUnit adUnit : createdAdUnits) {
 			createdAdUnitMap.put(adUnit.getAdUnitCode(), adUnit);
