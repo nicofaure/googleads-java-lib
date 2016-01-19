@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,6 +13,8 @@
 // limitations under the License.
 
 package dfp.axis.v201505.inventoryservice;
+
+import static java.lang.String.format;
 
 import com.google.api.ads.common.lib.auth.OfflineCredentials;
 import com.google.api.ads.common.lib.auth.OfflineCredentials.Api;
@@ -30,90 +32,98 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * This example updates ad unit sizes by adding a banner ad size. To determine
- * which ad units exist, run GetAllAdUnits.java.
- *
- * Credentials and properties in {@code fromFile()} are pulled from the
- * "ads.properties" file. See README for more info.
- *
- * Tags: InventoryService.getAdUnitsByStatement
+ * This example updates ad unit sizes by adding a banner ad size. To determine which ad units exist,
+ * run GetAllAdUnits.java. Credentials and properties in {@code fromFile()} are pulled from the
+ * "ads.properties" file. See README for more info. Tags: InventoryService.getAdUnitsByStatement
  * Tags: InventoryService.updateAdUnits
  *
  * @author Adam Rogal
  */
 public class UpdateAdUnits {
 
-  // Set the ID of the ad unit to update.
-  private static final String AD_UNIT_ID = "INSERT_AD_UNIT_ID_HERE";
+	@SuppressWarnings("resource")
+	public static void runExample(DfpServices dfpServices, DfpSession session, String filePath) throws Exception {
+		BufferedReader inputFile = new BufferedReader(new InputStreamReader(new FileInputStream(filePath), "UTF8"));
+		InventoryServiceInterface inventoryService = dfpServices.get(session, InventoryServiceInterface.class);
+		String line;
+		while ((line = inputFile.readLine()) != null) {
+			System.out.println(format("Reading line %s", line));
+			String[] dataAsArray = line.split("\t");
+			String adUnitCode = dataAsArray[0];
+			AdUnitSize[] sizes = obtainSizes(dataAsArray[1]);
 
-  public static void runExample(DfpServices dfpServices, DfpSession session, String adUnitId)
-      throws Exception {
-    // Get the InventoryService.
-    InventoryServiceInterface inventoryService =
-        dfpServices.get(session, InventoryServiceInterface.class);
+			StatementBuilder statementBuilder = new StatementBuilder().where("adunitcode = :code").orderBy("id ASC").limit(1)
+					.withBindVariableValue("code", "SP_MCO1743");
 
-    // Create a statement to only select a single ad unit by ID.
-    StatementBuilder statementBuilder = new StatementBuilder()
-        .where("id = :id")
-        .orderBy("id ASC")
-        .limit(1)
-        .withBindVariableValue("id", adUnitId);
+			// Get the ad unit.
+			AdUnitPage page = inventoryService.getAdUnitsByStatement(statementBuilder.toStatement());
 
-    // Get the ad unit.
-    AdUnitPage page =
-        inventoryService.getAdUnitsByStatement(statementBuilder.toStatement());
+			AdUnit adUnit = Iterables.getOnlyElement(Arrays.asList(page.getResults()));
 
-    AdUnit adUnit = Iterables.getOnlyElement(Arrays.asList(page.getResults()));
+			if (adUnit != null) {
+				System.out.println(format("AdUnit with AdUnitCode: %s will be updated", adUnitCode));
+				adUnit.setAdUnitSizes(sizes);
 
-    List<AdUnitSize> adUnitSizes = Lists.<AdUnitSize>newArrayList(adUnit.getAdUnitSizes());
+				// Update the ad unit on the server.
+				// AdUnit[] adUnits = inventoryService.updateAdUnits(new AdUnit[] { adUnit });
+				//
+				// for (AdUnit updatedAdUnit : adUnits) {
+				// List<String> adUnitSizeStrings = Lists.newArrayList();
+				// for (AdUnitSize updatedAdUnitSize : updatedAdUnit.getAdUnitSizes()) {
+				// adUnitSizeStrings
+				// .add(String.format("%dx%d", updatedAdUnitSize.getSize().getWidth(),
+				// updatedAdUnitSize.getSize().getHeight()));
+				// }
+				// System.out.printf("Ad unit with ID \"%s\", name \"%s\", and sizes [%s] was updated.\n",
+				// updatedAdUnit.getId(),
+				// updatedAdUnit.getName(), Joiner.on(", ").join(adUnitSizeStrings));
+				// }
+			} else {
+				System.out.println(format("AdUnit with AdUnitCode: %s was not updated", adUnitCode));
+			}
+		}
+	}
 
-    // Create a 480x60 web ad unit size.
-    Size size = new Size();
-    size.setWidth(468);
-    size.setHeight(60);
+	private static AdUnitSize[] obtainSizes(String sizes) {
+		AdUnitSize[] adUnitSizes;
+		System.out.println("Size: " + sizes + ";");
+		if (!"".equals(sizes)) {
+			String[] sizeAsCollection = sizes.split(";");
+			adUnitSizes = new AdUnitSize[sizeAsCollection.length];
+			for (int i = 0; i < sizeAsCollection.length; i++) {
+				System.out.println(format("Adding new size: %s", sizeAsCollection[i]));
+				String[] widthAndHeight = sizeAsCollection[i].split("x");
+				Size webSize = new Size();
+				webSize.setWidth(new Integer(widthAndHeight[0]));
+				webSize.setHeight(new Integer(widthAndHeight[1]));
+				webSize.setIsAspectRatio(false);
+				AdUnitSize webAdUnitSize = new AdUnitSize();
+				webAdUnitSize.setSize(webSize);
+				webAdUnitSize.setEnvironmentType(EnvironmentType.BROWSER);
+				adUnitSizes[i] = webAdUnitSize;
+			}
+		} else {
+			adUnitSizes = new AdUnitSize[] {};
+		}
+		return adUnitSizes;
+	}
 
-    AdUnitSize adUnitSize = new AdUnitSize();
-    adUnitSize.setSize(size);
-    adUnitSize.setEnvironmentType(EnvironmentType.BROWSER);
-    adUnitSizes.add(adUnitSize);
+	public static void main(String[] args) throws Exception {
+		// Generate a refreshable OAuth2 credential.
+		Credential oAuth2Credential = new OfflineCredentials.Builder().forApi(Api.DFP).fromFile().build().generateCredential();
 
-    // Update the ad unit sizes.
-    adUnit.setAdUnitSizes(adUnitSizes.toArray(new AdUnitSize[] {}));
+		// Construct a DfpSession.
+		DfpSession session = new DfpSession.Builder().fromFile().withOAuth2Credential(oAuth2Credential).build();
 
-    // Update the ad unit on the server.
-    AdUnit[] adUnits = inventoryService.updateAdUnits(new AdUnit[] {adUnit});
+		DfpServices dfpServices = new DfpServices();
 
-    for (AdUnit updatedAdUnit : adUnits) {
-      List<String> adUnitSizeStrings = Lists.newArrayList();
-      for (AdUnitSize updatedAdUnitSize : updatedAdUnit.getAdUnitSizes()) {
-        adUnitSizeStrings.add(String.format("%dx%d", updatedAdUnitSize.getSize().getWidth(),
-            updatedAdUnitSize.getSize().getHeight()));
-      }
-      System.out.printf("Ad unit with ID \"%s\", name \"%s\", and sizes [%s] was updated.\n",
-          updatedAdUnit.getId(), updatedAdUnit.getName(), Joiner.on(", ").join(adUnitSizeStrings));
-    }
-  }
-
-  public static void main(String[] args) throws Exception {
-    // Generate a refreshable OAuth2 credential.
-    Credential oAuth2Credential = new OfflineCredentials.Builder()
-        .forApi(Api.DFP)
-        .fromFile()
-        .build()
-        .generateCredential();
-
-    // Construct a DfpSession.
-    DfpSession session = new DfpSession.Builder()
-        .fromFile()
-        .withOAuth2Credential(oAuth2Credential)
-        .build();
-
-    DfpServices dfpServices = new DfpServices();
-
-    runExample(dfpServices, session, AD_UNIT_ID);
-  }
+		runExample(dfpServices, session, args[0]);
+	}
 }
