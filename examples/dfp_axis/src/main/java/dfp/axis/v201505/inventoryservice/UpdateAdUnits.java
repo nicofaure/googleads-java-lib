@@ -16,6 +16,13 @@ package dfp.axis.v201505.inventoryservice;
 
 import static java.lang.String.format;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import com.google.api.ads.common.lib.auth.OfflineCredentials;
 import com.google.api.ads.common.lib.auth.OfflineCredentials.Api;
 import com.google.api.ads.dfp.axis.factory.DfpServices;
@@ -28,15 +35,11 @@ import com.google.api.ads.dfp.axis.v201505.InventoryServiceInterface;
 import com.google.api.ads.dfp.axis.v201505.Size;
 import com.google.api.ads.dfp.lib.client.DfpSession;
 import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.util.Sleeper;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
-import java.util.Arrays;
-import java.util.List;
+import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader.Array;
 
 /**
  * This example updates ad unit sizes by adding a banner ad size. To determine which ad units exist,
@@ -54,41 +57,52 @@ public class UpdateAdUnits {
 		InventoryServiceInterface inventoryService = dfpServices.get(session, InventoryServiceInterface.class);
 		String line;
 		while ((line = inputFile.readLine()) != null) {
-			System.out.println(format("Reading line %s", line));
+			System.out.println(format("Reading line %s from file", line));
 			String[] dataAsArray = line.split("\t");
 			String adUnitCode = dataAsArray[0];
 			AdUnitSize[] sizes = obtainSizes(dataAsArray[1]);
-
-			StatementBuilder statementBuilder = new StatementBuilder().where("adunitcode = :code").orderBy("id ASC").limit(1)
-					.withBindVariableValue("code", "SP_MCO1743");
+			StatementBuilder statementBuilder = new StatementBuilder().where("adunitcode = :code").orderBy("id ASC").limit(100)
+					.withBindVariableValue("code", adUnitCode);
 
 			// Get the ad unit.
 			AdUnitPage page = inventoryService.getAdUnitsByStatement(statementBuilder.toStatement());
 
-			AdUnit adUnit = Iterables.getOnlyElement(Arrays.asList(page.getResults()));
+			if (page != null && page.getResults() != null && page.getResults().length > 0) {
+				AdUnit adUnit = Iterables.getOnlyElement(Arrays.asList(page.getResults()));
+				System.out.println("ADUNITCODE:" + adUnit.getAdUnitCode());
 
-			if (adUnit != null) {
-				System.out.println(format("AdUnit with AdUnitCode: %s will be updated", adUnitCode));
-				adUnit.setAdUnitSizes(sizes);
-
-				// Update the ad unit on the server.
-				// AdUnit[] adUnits = inventoryService.updateAdUnits(new AdUnit[] { adUnit });
-				//
-				// for (AdUnit updatedAdUnit : adUnits) {
-				// List<String> adUnitSizeStrings = Lists.newArrayList();
-				// for (AdUnitSize updatedAdUnitSize : updatedAdUnit.getAdUnitSizes()) {
-				// adUnitSizeStrings
-				// .add(String.format("%dx%d", updatedAdUnitSize.getSize().getWidth(),
-				// updatedAdUnitSize.getSize().getHeight()));
-				// }
-				// System.out.printf("Ad unit with ID \"%s\", name \"%s\", and sizes [%s] was updated.\n",
-				// updatedAdUnit.getId(),
-				// updatedAdUnit.getName(), Joiner.on(", ").join(adUnitSizeStrings));
-				// }
+				if (adUnit != null) {
+					List<AdUnitSize> allSizes = new ArrayList<AdUnitSize>(Arrays.asList(sizes));
+					if (adUnit.getAdUnitSizes() != null) {
+						allSizes.addAll(Arrays.asList(adUnit.getAdUnitSizes()));
+					}
+					AdUnitSize[] updatedSizes = allSizes.toArray(new AdUnitSize[allSizes.size()]);
+					adUnit.setAdUnitSizes(updatedSizes);
+					adUnit.getInheritedAdSenseSettings().getValue().setAdSenseEnabled(false);
+					System.out.println(format("AdUnit with id: %s will be updated", adUnit.getId()));
+					AdUnit[] adUnits = inventoryService.updateAdUnits(new AdUnit[] { adUnit });
+					System.out.println("AdUnits:" + adUnits);
+					for (AdUnit updatedAdUnit : adUnits) {
+						List<String> adUnitSizeStrings = Lists.newArrayList();
+						for (AdUnitSize updatedAdUnitSize : updatedAdUnit.getAdUnitSizes()) {
+							adUnitSizeStrings.add(String.format("%dx%d", updatedAdUnitSize.getSize().getWidth(), updatedAdUnitSize.getSize()
+									.getHeight()));
+						}
+						System.out.printf("Ad unit with ID \"%s\", name \"%s\", and sizes [%s] was updated.\n", updatedAdUnit.getId(),
+								updatedAdUnit.getName(), Joiner.on(", ").join(adUnitSizeStrings));
+						System.out
+								.println(String
+										.format("You can check this adunit going to: https://www.google.com/dfp/105773011#inventory/inventory/adSlotId=%s&createTargetPlatform=WEB",
+												updatedAdUnit.getId()));
+						System.out.println("Waiting 500 ms");
+					}
+				}
 			} else {
-				System.out.println(format("AdUnit with AdUnitCode: %s was not updated", adUnitCode));
+				System.out.println(format("AdUnit with AdUnitCode: %s was not found", adUnitCode));
 			}
 		}
+
+		System.out.println("END");
 	}
 
 	private static AdUnitSize[] obtainSizes(String sizes) {
